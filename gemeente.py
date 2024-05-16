@@ -2,6 +2,7 @@ import re
 import regex
 import pandas as pd
 import csv
+import unicodedata
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
@@ -29,26 +30,51 @@ def fun1(dataset):
             global_dict[int(id)] = w
 
 
-def fun5(word, title, positions):
+def fun5(word0, title, positions):
     ''' does something'''
+#    global count
+#    word0 = word.strip()
+    word = unicodedata.normalize('NFC', word0)
+
+#    matches = re.search(re.escape(word), title[positions:]) #, re.UNICODE)
     matches = re.search(re.escape(word), title[positions:], re.UNICODE)
+#    matches = regex.search(word, title[positions:], regex.UNICODE | regex.IGNORECASE, concurrent=True, fuzzy=True)
+#    matches = re.search(re.escape(word), title[positions:], concurrent=True)
+#    matches = re.search(re.escape(word), title[positions:], concurrent=True, fuzzy=True)
+
     if matches:
         position = matches.end() + positions
 #        print(word, matches.start()+positions, position)
         return position
 
     else:
-        print('\n', title)
-        print('\n', word, "not detected")
+        check = 0
+#        print('\n', title)
+#        print('\n', word, "not detected")
 #        for wrd in title[positions:].split():
-        for wrd in re.split(r'[,;.:\s]\s*', title[positions:]):
-            print(wrd)
-            rat = fuzz.WRatio(word, wrd)    # choose between fuzz, wfuzz
-            if rat > 80:
-                print(word, wrd, rat)
-                fun5(wrd, title, positions)
-                break
-#                return positions
+        for wrd in re.split(r'[,;.:\s"]\s*', title[positions:]):
+            wrd = wrd.strip()
+            if len(wrd) == len(word):
+#            print(wrd)
+#            rat = fuzz.WRatio(word, wrd)    # choose between fuzz, wfuzz
+                rat = fuzz.ratio(word, wrd)    # choose between fuzz, wfuzz
+                if rat >= 80:
+                    check = 1
+#                    print(word, wrd, rat)
+ #                   print(len(word), len(wrd))
+#                    for letter in word:
+ #                       print(letter)
+  #                  for letter in wrd:
+   #                     print(letter)
+                    fun5(wrd, title, positions)
+                    break
+
+    if  check == 0:
+        print('\n', word, "not detected")
+#        print(title[positions:])
+        print(title)
+        pass
+#        print(title[positions:], '\n')
 
     return positions
 
@@ -59,10 +85,13 @@ def fun4(annodata2, id):
 
     list_toponyms = annodata2["toponym"].to_list()    # make list of toponyms
 
+#    print('\n', list_toponyms)
+
+
     if isTitle:    # look at title
-        title = global_dict[id]["title"]    # dictionary values of this article
-#        print(title)
- #       print(list_toponyms, '\n')
+        title0 = global_dict[id]["title"]    # dictionary values of this article
+        title = unicodedata.normalize('NFC', title0)
+ #       print(title)
 
     # try some regex
         x = re.findall("[gG]emeente", title)
@@ -73,11 +102,17 @@ def fun4(annodata2, id):
   #          print('\n')
 
     else:    # look at content
-        content = global_dict[id]["content"]    # dictionary values of this article
+        content0 = global_dict[id]["content"]    # dictionary values of this article
 #        print(list_toponyms, '\n')
+        content = unicodedata.normalize('NFC', content0)
 
+#        print(content)
 
         x = re.findall("[gG]emeente", content)
+
+        positions = 0
+        for word in list_toponyms:
+            positions = fun5(word, content, positions)
 
  #       for line in x:
   #          print(line)
@@ -106,7 +141,7 @@ def fun3(annodata):
 def fun2(annot):
     '''this function does something '''
 
-    with open(annot, newline='') as f:
+    with open(annot, newline='', encoding="utf-8") as f:
         columnNames = ["articleID", "toponym", "geoID", "isTitle"]
         df = pd.read_csv(f, sep='\t', names=columnNames)
 
@@ -144,5 +179,4 @@ def test():
             matches = re.search(r'\b' + word + r'\b', text[positions:])
             positions = matches.end()
             print(word, positions)
-
 
