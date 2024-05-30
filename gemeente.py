@@ -8,9 +8,29 @@ from fuzzywuzzy import process
 
 
 #TODO
-# check surrounding words?
-# test on full texts
-# ..????????????
+# check surrounding words? with bash or regex
+# make all occurences the same per article? 
+# str.partition
+# gemeente greedy maken?
+# compile regex patterns. p = re.compile(pattern), p.match(str)
+# gemeente, provicie (provincies x en y), stad, hoofdstad, gebied, (staat), dorpje, deelstaat, (Drentse Havelte?), bolwerk, Republiek Congo, havenstad, buurland, Oliestaat, Hof, Overijsserlse Bornerbroek, woonplaats, kustplaats, plaatsje, Citadel Aleppo, Volksrepublieken Donetsk en Loehansk, regio, stadskantoor utrecht wijk, eiland, graafschap Somerset, ereveld, kolonie Nederlands-Indie, naburige Simpelveld, 
+# station, luchthaven, (perron?), geboorteplaats, Ierse, kustplaats, Golfstaatje, grensplaats, paleis, 
+# artikel meta data (binnenland nieuws), rotterdamse, schiereiland, dorp, bergketen, koningsstad, 
+# r'dam, check r'dam similarity met alle andere annotaties. geef ID van beste similarity
+# stad x, in yland. x (yland). xland naast, bij yland. Buurland, kasteel, thuisstad, bruinkooldorp, stadje, belgische, texaanse, kanaal tynaarlo, parlement, eilandje, land guinee, 
+
+
+def test():
+    # str.partition
+    title = "De gemeente weet t even niet"
+    b, k, a = title.partition("gemeente")
+    print('b:', b, 'k:', k, 'a:', a)
+    # loop through toponyms
+#    annodata = annodata.reset_index()    # idk if necessary
+ #   for index, row in annodata.iterrows():
+  #      fun4(artID, row["toponym"], row["isTitle"])
+#        print(row["toponym"], row["isTitle"])
+# test (?: ) vs (?> ...)
 
 
 def fun1(dataset):
@@ -32,49 +52,51 @@ def fun1(dataset):
 
 def fun5(word0, title, positions):
     ''' does something'''
-#    global count
-#    word0 = word.strip()
+    # normalize text....
     word = unicodedata.normalize('NFC', word0)
 
-#    matches = re.search(re.escape(word), title[positions:]) #, re.UNICODE)
     matches = re.search(re.escape(word), title[positions:], re.UNICODE)
-#    matches = regex.search(word, title[positions:], regex.UNICODE | regex.IGNORECASE, concurrent=True, fuzzy=True)
-#    matches = re.search(re.escape(word), title[positions:], concurrent=True)
-#    matches = re.search(re.escape(word), title[positions:], concurrent=True, fuzzy=True)
 
     if matches:
         position = matches.end() + positions
-#        print(word, matches.start()+positions, position)
+   #     print(word, matches.start()+positions, position)
+
+############## check surrounding words ############
+        match = matches.group()
+#        x = re.search("(?>\w+ )?"+ re.escape(match) +  "(?> \w+)?", title[positions:])
+        pre = r"\b(?:[Gg]emeente|[Pp]rovincie|[Ss]tad|[Hh]oofdstad|[Ee]iland|[Dd]orp|[Ss]taat)(?:je)?\b "
+#        pre = "[Gg]emeente "
+        x = re.search(pre + re.escape(match) +  "(?> \w+)?", title[positions:])
+
+  #      try:
+        if x:
+            b = x.group()
+            print(b)
+#        except:
+ #           print("not found:", word, match)
+
         return position
+
+
+###################################
 
     else:
         check = 0
-#        print('\n', title)
-#        print('\n', word, "not detected")
-#        for wrd in title[positions:].split():
         for wrd in re.split(r'[,;.:\s"]\s*', title[positions:]):
             wrd = wrd.strip()
             if len(wrd) == len(word):
-#            print(wrd)
+
 #            rat = fuzz.WRatio(word, wrd)    # choose between fuzz, wfuzz
                 rat = fuzz.ratio(word, wrd)    # choose between fuzz, wfuzz
                 if rat >= 80:
                     check = 1
-#                    print(word, wrd, rat)
- #                   print(len(word), len(wrd))
-#                    for letter in word:
- #                       print(letter)
-  #                  for letter in wrd:
-   #                     print(letter)
                     fun5(wrd, title, positions)
                     break
 
+    # check whether words were skipped
     if  check == 0:
         print('\n', word, "not detected")
-#        print(title[positions:])
         print(title)
-        pass
-#        print(title[positions:], '\n')
 
     return positions
 
@@ -93,9 +115,20 @@ def fun4(annodata2, id):
         title = unicodedata.normalize('NFC', title0)
  #       print(title)
 
-    # try some regex
-        x = re.findall("[gG]emeente", title)
+    #   try some regex
+#        x = re.findall("[gG]emeente", title)
+        x = re.findall("[gG]emeente (\w+)", title)
 
+
+        for line in x:
+            pass
+#            print(title)
+ #           print(line)
+
+
+
+
+#################################
         positions = 0
         for word in list_toponyms:
             positions = fun5(word, title, positions)
@@ -108,12 +141,22 @@ def fun4(annodata2, id):
 
 #        print(content)
 
-        x = re.findall("[gG]emeente", content)
+##### trying to get surrounding words
+#        x = re.findall("[gG]emeente", content)
 
+#        x = re.findall("[gG]emeente \w+ \w+", content)
+#        x = re.findall("[gG]emeente [A-Z]\w+", content)
+        x = re.findall("[gG]emeente(?> [A-Z]\w+)+", content)
+
+        for line in x:
+            pass
+#            print(line)
+
+
+##########
         positions = 0
         for word in list_toponyms:
             positions = fun5(word, content, positions)
-
  #       for line in x:
   #          print(line)
 
@@ -124,16 +167,11 @@ def fun3(annodata):
 #    print(annodata.head())
 
     artID = annodata["articleID"].values[0]    # article ID of this batch
-
+#    print(artID)
 
     # groupby istitle
     data2 = annodata.groupby(by="isTitle", sort=False).apply(fun4, id=artID)
 
-    # loop through toponyms
-#    annodata = annodata.reset_index()    # idk if necessary
- #   for index, row in annodata.iterrows():
-  #      fun4(artID, row["toponym"], row["isTitle"])
-#        print(row["toponym"], row["isTitle"])
 
 
 
