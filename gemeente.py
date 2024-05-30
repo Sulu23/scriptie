@@ -63,19 +63,21 @@ def fun5(word0, title, positions):
 
 ############## check surrounding words ############
         match = matches.group()
+        b = match
 #        x = re.search("(?>\w+ )?"+ re.escape(match) +  "(?> \w+)?", title[positions:])
         pre = r"\b(?:[Gg]emeente|[Pp]rovincie|[Ss]tad|[Hh]oofdstad|[Ee]iland|[Dd]orp|[Ss]taat)(?:je)?\b "
-#        pre = "[Gg]emeente "
-        x = re.search(pre + re.escape(match) +  "(?> \w+)?", title[positions:])
+#        x = re.search(pre + re.escape(match) +  "(?> \w+)?", title[positions:])
+        x = re.search(pre + re.escape(match), title[positions:])
 
   #      try:
         if x:
             b = x.group()
-            print(b)
+#            print(b)
+
 #        except:
  #           print("not found:", word, match)
 
-        return position
+        return b, position
 
 
 ###################################
@@ -89,16 +91,18 @@ def fun5(word0, title, positions):
 #            rat = fuzz.WRatio(word, wrd)    # choose between fuzz, wfuzz
                 rat = fuzz.ratio(word, wrd)    # choose between fuzz, wfuzz
                 if rat >= 80:
+#                    print(wrd, end=' ')
                     check = 1
-                    fun5(wrd, title, positions)
+                    a, c = fun5(wrd, title, positions)
+                    return a, c
                     break
 
     # check whether words were skipped
     if  check == 0:
         print('\n', word, "not detected")
         print(title)
-
-    return positions
+#    print(word)
+ #   return 0, positions
 
 
 def fun4(annodata2, id):
@@ -131,7 +135,8 @@ def fun4(annodata2, id):
 #################################
         positions = 0
         for word in list_toponyms:
-            positions = fun5(word, title, positions)
+            lookUp, positions = fun5(word, title, positions)
+            print(lookUp, positions)
   #          print('\n')
 
     else:    # look at content
@@ -156,7 +161,8 @@ def fun4(annodata2, id):
 ##########
         positions = 0
         for word in list_toponyms:
-            positions = fun5(word, content, positions)
+            lookUp, positions = fun5(word, content, positions)
+            print(lookUp, positions)
  #       for line in x:
   #          print(line)
 
