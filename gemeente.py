@@ -19,6 +19,8 @@ from fuzzywuzzy import process
 # r'dam, check r'dam similarity met alle andere annotaties. geef ID van beste similarity
 # stad x, in yland. x (yland). xland naast, bij yland. Buurland, kasteel, thuisstad, bruinkooldorp, stadje, belgische, texaanse, kanaal tynaarlo, parlement, eilandje, land guinee, 
 
+global placeType_dict
+placeType_dict = {"stad": ["PPL"], "dorp": ["PPL"], "gemeente": ["ADM2"], "provincie": ["ADM1"], "staat": ["ADM1"], "hoofdstad": ["PPLC", "PPLA"] , "eiland": ["ISL"]}
 
 def test():
     # str.partition
@@ -136,7 +138,7 @@ def fun4(annodata2, id):
         positions = 0
         for word in list_toponyms:
             lookUp, positions = fun5(word, title, positions)
-            print(lookUp, positions)
+            print(lookUp)
   #          print('\n')
 
     else:    # look at content
@@ -162,7 +164,7 @@ def fun4(annodata2, id):
         positions = 0
         for word in list_toponyms:
             lookUp, positions = fun5(word, content, positions)
-            print(lookUp, positions)
+            print(lookUp)
  #       for line in x:
   #          print(line)
 
@@ -173,12 +175,12 @@ def fun3(annodata):
 #    print(annodata.head())
 
     artID = annodata["articleID"].values[0]    # article ID of this batch
-#    print(artID)
+    print(artID, ':')
 
     # groupby istitle
     data2 = annodata.groupby(by="isTitle", sort=False).apply(fun4, id=artID)
 
-
+    print('\n')
 
 
 
@@ -202,7 +204,8 @@ def main():
 
     fun2("all_annotations.tsv")
 
-
+    global placeType_dic
+    print(placeType_dict["gemeente"])
 if __name__ == "__main__":
     main()
 
