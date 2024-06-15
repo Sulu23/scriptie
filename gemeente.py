@@ -7,49 +7,36 @@ from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
 
-#TODO
-# check surrounding words? with bash or regex
-# make all occurences the same per article? 
-# str.partition
-# gemeente greedy maken?
-# compile regex patterns. p = re.compile(pattern), p.match(str)
-# gemeente, provicie (provincies x en y), stad, hoofdstad, gebied, (staat), dorpje, deelstaat, (Drentse Havelte?), bolwerk, Republiek Congo, havenstad, buurland, Oliestaat, Hof, Overijsserlse Bornerbroek, woonplaats, kustplaats, plaatsje, Citadel Aleppo, Volksrepublieken Donetsk en Loehansk, regio, stadskantoor utrecht wijk, eiland, graafschap Somerset, ereveld, kolonie Nederlands-Indie, naburige Simpelveld, 
-# station, luchthaven, (perron?), geboorteplaats, Ierse, kustplaats, Golfstaatje, grensplaats, paleis, 
-# artikel meta data (binnenland nieuws), rotterdamse, schiereiland, dorp, bergketen, koningsstad, 
-# r'dam, check r'dam similarity met alle andere annotaties. geef ID van beste similarity
-# stad x, in yland. x (yland). xland naast, bij yland. Buurland, kasteel, thuisstad, bruinkooldorp, stadje, belgische, texaanse, kanaal tynaarlo, parlement, eilandje, land guinee, 
-
+##### in main programma #####
 global placeType_dict
 placeType_dict = {"stad": ["PPL"], "dorp": ["PPL"], "gemeente": ["ADM2"], "provincie": ["ADM1"], "staat": ["ADM1"], "hoofdstad": ["PPLC", "PPLA"] , "eiland": ["ISL"]}
-
-def test():
-    # str.partition
-    title = "De gemeente weet t even niet"
-    b, k, a = title.partition("gemeente")
-    print('b:', b, 'k:', k, 'a:', a)
-    # loop through toponyms
-#    annodata = annodata.reset_index()    # idk if necessary
- #   for index, row in annodata.iterrows():
-  #      fun4(artID, row["toponym"], row["isTitle"])
-#        print(row["toponym"], row["isTitle"])
-# test (?: ) vs (?> ...)
+global continents
+continents = {
+     "Europa": 6255148, "Afrika": 6255146,
+     "Azië":6255147, "Oceanië": 6255151,
+     "Noord-Amerika": 6255149, "Zuid-Amerika": 6255149,
+     "Antarctica": 6255152
+    }
+ ##################
 
 
-def fun1(dataset):
+def makeDict(articles_dataset):
     '''this function does something '''
-    global global_dict
-    global_dict = {}
+    articles_dict = {}
 
-    with open(dataset, mode='r') as f:
+    with open(articles_dataset, mode='r') as f:
         file = csv.reader(f)
         next(file) # skip first row
         for id, datetime, title, content, category, url in file:
-            w = {}
-            w["datetime"] = datetime
-            w["title"] = title
-            w["content"] = content
-            w["url"] = url
-            global_dict[int(id)] = w
+            article = {}
+            article["datetime"] = datetime
+            article["title"] = title
+            article["content"] = content
+            article["category"] = category
+            article["url"] = url
+            articles_dict[int(id)] = article
+
+    return articles_dict
 
 
 def fun5(word0, title, positions):
@@ -57,32 +44,31 @@ def fun5(word0, title, positions):
     # normalize text....
     word = unicodedata.normalize('NFC', word0)
 
+
+    if word in continents:
+        return word, [], 0, continents[word]
+
+#    try:
+ #       print("CONTINENT", word, continents[word])
+#    except:
+ #       print("x ", end=" ")
+
     matches = re.search(re.escape(word), title[positions:], re.UNICODE)
 
     if matches:
         position = matches.end() + positions
-   #     print(word, matches.start()+positions, position)
 
-############## check surrounding words ############
         match = matches.group()
-        b = match
-#        x = re.search("(?>\w+ )?"+ re.escape(match) +  "(?> \w+)?", title[positions:])
-        pre = r"\b(?:[Gg]emeente|[Pp]rovincie|[Ss]tad|[Hh]oofdstad|[Ee]iland|[Dd]orp|[Ss]taat)(?:je)?\b "
-#        x = re.search(pre + re.escape(match) +  "(?> \w+)?", title[positions:])
+        fcode = []
+        pre = r"\b(:?([Gg]emeente|[Pp]rovincie|[Ss]tad|[Hh]oofdstad|[Ee]iland|[Dd]orp|[Ss]taat))(?:je)?\b "
         x = re.search(pre + re.escape(match), title[positions:])
 
-  #      try:
         if x:
-            b = x.group()
-#            print(b)
-
-#        except:
- #           print("not found:", word, match)
-
-        return b, position
+            type = x.group(1)
+            fcode = placeType_dict[type]
 
 
-###################################
+        return match, fcode, position, 0
 
     else:
         check = 0
@@ -90,140 +76,88 @@ def fun5(word0, title, positions):
             wrd = wrd.strip()
             if len(wrd) == len(word):
 
-#            rat = fuzz.WRatio(word, wrd)    # choose between fuzz, wfuzz
                 rat = fuzz.ratio(word, wrd)    # choose between fuzz, wfuzz
                 if rat >= 80:
-#                    print(wrd, end=' ')
                     check = 1
-                    a, c = fun5(wrd, title, positions)
-                    return a, c
+                    a, code, pos, id = fun5(wrd, title, positions)
+                    return a, code, pos, 0
                     break
 
     # check whether words were skipped
     if  check == 0:
         print('\n', word, "not detected")
         print(title)
-#    print(word)
- #   return 0, positions
 
 
 def fun4(annodata2, id):
     ''' does something'''
     isTitle = annodata2["isTitle"].values[0]    # check if title
-
     list_toponyms = annodata2["toponym"].to_list()    # make list of toponyms
 
-#    print('\n', list_toponyms)
-
+    processedData = annodata2.copy()
+    processedData["predID"] = 0
+    processedData["fcodes"] = [[] for r in range(len(processedData))]
+    processedData["lookUp"] = ''
 
     if isTitle:    # look at title
         title0 = global_dict[id]["title"]    # dictionary values of this article
         title = unicodedata.normalize('NFC', title0)
- #       print(title)
 
-    #   try some regex
-#        x = re.findall("[gG]emeente", title)
-        x = re.findall("[gG]emeente (\w+)", title)
-
-
-        for line in x:
-            pass
-#            print(title)
- #           print(line)
-
-
-
-
-#################################
         positions = 0
-        for word in list_toponyms:
-            lookUp, positions = fun5(word, title, positions)
-            print(lookUp)
-  #          print('\n')
+
+        for index, row in processedData.iterrows():
+           lookUp, fcode, positions, predID  = fun5(row.toponym, title, positions)
+           processedData.at[index, "lookUp"] = lookUp
+           processedData.at[index, "fcodes"] = fcode
+           processedData.at[index, "predID"] = predID
+
 
     else:    # look at content
         content0 = global_dict[id]["content"]    # dictionary values of this article
-#        print(list_toponyms, '\n')
         content = unicodedata.normalize('NFC', content0)
 
-#        print(content)
-
-##### trying to get surrounding words
-#        x = re.findall("[gG]emeente", content)
-
-#        x = re.findall("[gG]emeente \w+ \w+", content)
-#        x = re.findall("[gG]emeente [A-Z]\w+", content)
-        x = re.findall("[gG]emeente(?> [A-Z]\w+)+", content)
-
-        for line in x:
-            pass
-#            print(line)
-
-
-##########
         positions = 0
-        for word in list_toponyms:
-            lookUp, positions = fun5(word, content, positions)
-            print(lookUp)
- #       for line in x:
-  #          print(line)
+        for index, row in processedData.iterrows():
+           lookUp, fcode, positions, predID = fun5(row.toponym, content, positions)
+           processedData.at[index, "lookUp"] = lookUp
+           processedData.at[index, "fcodes"] = fcode
+           processedData.at[index, "predID"] = predID
 
-
+#    print(processedData)
+    return processedData
 
 def fun3(annodata):
     '''this function does something '''
-#    print(annodata.head())
 
     artID = annodata["articleID"].values[0]    # article ID of this batch
-    print(artID, ':')
+    print(artID, global_dict[artID]["category"], ':')
 
     # groupby istitle
     data2 = annodata.groupby(by="isTitle", sort=False).apply(fun4, id=artID)
-
+ #   data2.reset_index()
     print('\n')
 
+    return(data2)
 
-
-def fun2(annot):
+def process_annotation(annot, dataset):
     '''this function does something '''
+
+    global global_dict
+    global_dict = makeDict(dataset)
 
     with open(annot, newline='', encoding="utf-8") as f:
         columnNames = ["articleID", "toponym", "geoID", "isTitle"]
         df = pd.read_csv(f, sep='\t', names=columnNames)
 
     id = "articleID"
-    df = df.groupby(by=id, sort=False).apply(fun3)    # processes batches per article ID
+
+    dfnew = df.groupby(by=id, sort=False).apply(fun3)    # processes batches per article ID
+
+    dfnew = dfnew.reset_index(drop=True)
+
+    return dfnew   # with open("newfile.txt", 'r') as f:
+    #    print(f.read())
 
 
 
-
-
-
-def main():
-    fun1("dataset.csv") # makes a dict of dataset
-
-    fun2("all_annotations.tsv")
-
-    global placeType_dic
-    print(placeType_dict["gemeente"])
-if __name__ == "__main__":
-    main()
-
-
-
-
-
-
-def test():
-        list = ["groningen", "groningen", "utrecht", "lelystad", "utrecht"]
-        text = "groningen heeft groningen in de fik gestoken, utrecht en lelystad, utrecht."
-
-        print(list)
-        positions = 0
-
-        for word in list:
-#            print(text[0:])
-            matches = re.search(r'\b' + word + r'\b', text[positions:])
-            positions = matches.end()
-            print(word, positions)
 
