@@ -1,0 +1,8 @@
+run splitData.py on all_annotations.tsv to get annotations_test.tsv and annotations_dev.tsv
+
+run coreference.py to  preprocess one of these files, the result will be stored as pickledDf.pkl
+
+run zorigin.py on the pickled file to retrieve geoIDs, the result will be stored as output.tsv
+
+run zorigin with option "--baseline" and option "--dataset annotations_test.tsv" to run the baseline program.
+
